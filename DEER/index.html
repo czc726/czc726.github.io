@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+    content="DEER is a speculative decoding framework that drafts with diffusion language models and verifies with autoregressive models, enabling efficient lossless acceleration for LLM reasoning and agentic systems.">
+  <meta name="keywords"
+    content="DEER, speculative decoding, diffusion language model, dLLM, autoregressive LLM, blockwise drafting, acceleration, reasoning">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DEER: Draft with Diffusion, Verify with Autoregressive Models</title>
+
+  <!-- Google Analytics (kept from original template) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag('js', new Date());
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦌</text></svg>">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+
+  <!-- Extra small helpers for figure placeholders -->
+  <style>
+    .figure-placeholder {
+      border: 2px dashed #d0d0d0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      margin: 1.5rem 0;
+      font-size: 0.95rem;
+    }
+
+    .figure-placeholder .figure-label {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero-tagline {
+      font-size: 1.25rem;
+      margin-top: 0.75rem;
+      color: #4a4a4a;
+    }
+
+    .keypoint-badge {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: 1px solid #d0d0d0;
+      margin: 0.15rem;
+    }
+
+    .highlight-card {
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 12px 30px rgba(10, 10, 10, 0.05);
+      height: 100%;
+    }
+
+    .code-block {
+      background: #0b1020;
+      color: #f5f5f5;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      font-family: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+    }
+
+    .code-block span.kw {
+      color: #ffcc66;
+      font-weight: 600;
+    }
+
+    .code-block span.fn {
+      color: #7fd1ff;
+    }
+
+    .code-block span.cm {
+      color: #7a88cf;
+      font-style: italic;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </a>
+    </div>
+    <div class="navbar-menu">
+      <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link">
+            <span class="icon">
+              <i class="fas fa-project-diagram"></i>
+            </span>
+            <span>Related Work</span>
+          </a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="https://arxiv.org/abs/2401.???"
+              target="_blank">
+              <span class="icon is-small">
+                <i class="ai ai-arxiv"></i>
+              </span>
+              <span>EAGLE-3 (speculative decoding)</span>
+            </a>
+            <a class="navbar-item" href="https://arxiv.org/abs/2309.???"
+              target="_blank">
+              <span class="icon is-small">
+                <i class="ai ai-arxiv"></i>
+              </span>
+              <span>Medusa</span>
+            </a>
+            <a class="navbar-item" href="https://arxiv.org/abs/2305.???"
+              target="_blank">
+              <span class="icon is-small">
+                <i class="ai ai-arxiv"></i>
+              </span>
+              <span>Speculative Decoding</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">
+              <img src="static/images/deer.png"
+                  alt="DEER Logo"
+                  style="height: 1.5em; vertical-align: middle; margin-right: 0.3em;">
+              DEER: Draft with Diffusion, Verify with Autoregressive Models
+            </h1>
+
+            <p class="hero-tagline">
+              Draft with Diffusion, Verify with Autoregressive Models — Efficient Lossless Acceleration for LLM
+              Reasoning.
+            </p>
+
+            <div class="is-size-5 publication-authors" style="margin-top: 1.5rem;">
+              <span class="author-block">Zicong Cheng<sup>1,2,3</sup></span>,
+              <span class="author-block">Guo-Wei Yang<sup>2</sup></span>,
+              <span class="author-block">Jia Li<sup>1</sup></span>,
+              <span class="author-block">Zhijie Deng<sup>3</sup></span>,
+              <span class="author-block">Meng-Hao Guo<sup>1✉</sup></span>,
+              <span class="author-block">Shi-Min Hu<sup>1</sup></span>
+            </div>
+
+            <div class="is-size-6 publication-authors">
+              <span class="author-block"><sup>1</sup> Tsinghua University</span><br>
+              <span class="author-block"><sup>2</sup> Proxseer Inc</span><br>
+              <span class="author-block"><sup>3</sup> Shanghai Jiao Tong University</span>
+            </div>
+
+            <div class="is-size-6 publication-authors" style="margin-top: 0.5rem;">
+              <span class="author-block"><strong>✉ Corresponding author:</strong> gmh@tsinghua.edu.cn</span>
+            </div>
+
+
+            <!-- Links -->
+            <div class="column has-text-centered" style="margin-top: 1.75rem;">
+              <div class="publication-links">
+                <span class="link-block">
+                  <a href="static/files/paper.pdf"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                    </span>
+                    <span>Paper</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/0000.00000"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                    </span>
+                    <span>arXiv (placeholder)</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="javascript:void(0);" class="external-link button is-normal is-rounded is-dark is-outlined">
+                    <span class="icon">
+                      <i class="fab fa-github"></i>
+                    </span>
+                    <span>Code (Coming Soon)</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="javascript:void(0);" class="external-link button is-normal is-rounded is-dark is-outlined">
+                    <span class="icon">
+                      <i class="fas fa-database"></i>
+                    </span>
+                    <span>Models & Checkpoints (Coming Soon)</span>
+                  </a>
+                </span>
+              </div>
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+              <span class="keypoint-badge">Speculative Decoding</span>
+              <span class="keypoint-badge">Diffusion LLM Drafter</span>
+              <span class="keypoint-badge">Blockwise Parallel Tokens</span>
+              <span class="keypoint-badge">Lossless Acceleration</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">🎬 DEER Demo</h2>
+
+    <div class="columns is-centered">
+      <div class="column is-four-fifths has-text-centered">
+        <video
+          controls
+          preload="metadata"
+          style="width: 100%; border-radius: 12px; box-shadow: 0 12px 30px rgba(10, 10, 10, 0.15);">
+          <source src="static/videos/demo.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+
+        <p class="is-size-6 has-text-grey" style="margin-top: 0.5rem; font-style: italic;">
+          Example decoding demo of DEER: drafting with a diffusion language model and verifying with an autoregressive backbone.(On A100 GPU,backbone:Qwen3-30B-A3B)
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <!-- Abstract -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3 has-text-centered">📄 Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              As large language models are increasingly deployed in long-context reasoning and agentic workflows,
+              decoding latency becomes a dominant bottleneck. Classical speculative decoding accelerates inference by
+              letting a lightweight <em>drafter</em> propose multiple tokens, which are then checked against a stronger
+              autoregressive (AR) model. However, existing approaches typically rely on AR drafters, which suffer from
+              two structural limitations: they decode strictly left-to-right, and their own early mistakes accumulate and
+              gradually erode agreement with the verifier.
+            </p>
+            <p>
+              DEER replaces the AR drafter with a diffusion language model (dLLM) that generates entire token blocks in
+              one denoising step, naturally avoiding stepwise uncertainty accumulation and unlocking highly parallel
+              drafting. To make such a dLLM compatible with AR-style prefix continuation, we introduce a two-stage
+              Diffusion-to-Autoregressive alignment pipeline: first aligning the dLLM to continuation-style data, and
+              then refining token accuracy near the verification boundary with a position-weighted objective.
+            </p>
+            <p>
+              Across code generation benchmarks, DEER achieves significantly longer accepted drafts—up to 32 tokens per
+              block—and delivers strong end-to-end speedups. On HumanEval with a Qwen3-30B-A3B backbone, DEER reaches
+              up to 5.54× acceleration while preserving exact output semantics, substantially outperforming prior
+              speculative decoding systems based on AR drafters.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why DEER -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">🚀 Why DEER?</h2>
+      <div class="columns is-variable is-6">
+        <div class="column">
+          <div class="highlight-card">
+            <h3 class="title is-4">1. No Left-to-Right uncertainty Accumulation</h3>
+            <div class="content has-text-justified">
+              <p>
+                AR drafters generate drafts token by token, conditioning on unverified tokens. Any mismatch with the
+                verifier early in the sequence can be amplified step after step, shrinking the acceptance region and
+                sharply limiting usable draft length.
+              </p>
+              <p>
+                DEER uses a masked, blockwise dLLM drafter. All candidate tokens in a block are predicted jointly from
+                the same prefix, instead of being chained autoregressively. This breaks the feedback loop where draft
+                errors feed into future draft predictions, leading to much more stable acceptance behavior at larger
+                depths.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="highlight-card">
+            <h3 class="title is-4">2. Fully Parallel Drafting in Discrete Space</h3>
+            <div class="content has-text-justified">
+              <p>
+                Diffusion language models naturally support multi-token, parallel generation: a noisy sequence is
+                iteratively denoised into a clean discrete token block. DEER tailors this capability to speculative
+                decoding, combining one-step denoising with AR verification.
+              </p>
+              <p>
+                This design shifts most of the compute to a parallelizable drafter while keeping the AR model as a
+                lightweight, exact verifier. The result is a scalable and lossless acceleration scheme that is compatible
+                with modern LLM backbones and standard KV-cache implementations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Figure placeholder: conceptual comparison -->
+      <div class="content has-text-centered" style="margin-top: 2rem;">
+        <img src="static/images/motivation.png" alt="Conceptual comparison between AR-based drafting and DEER's diffusion-based block drafting" style="width: 100%; max-width: 800px; border-radius: 12px;">
+          <p class="is-size-6 has-text-grey" style="margin-top: 0.5rem; font-style: italic;">
+            <strong>Figure 1:</strong> Motivation and uncertainty accumulation concept
+          </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Method: DEER Pipeline -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">⚙️ DEER Pipeline</h2>
+
+      <div class="content has-text-justified">
+        <p>
+          DEER consists of a <strong>dLLM drafter</strong> and an <strong>AR verifier</strong> bound together by a
+          two-stage Diffusion-to-AR (D2A) alignment procedure, followed by blockwise speculative decoding at inference
+          time.
+        </p>
+      </div>
+
+      <div class="columns is-vcentered">
+        <div class="column is-6">
+          <h3 class="title is-4">Stage I — AR-Style Continuation Distillation</h3>
+          <div class="content has-text-justified">
+            <p>
+              A pretrained diffusion language model is originally trained to denoise full sequences, not to condition on
+              prefixes. In Stage I, we adapt it to act like an AR continuation model:
+            </p>
+            <ul>
+              <li>Start from teacher-generated answers from an AR backbone.</li>
+              <li>Randomly truncate each answer, append a special <code>[SEP]</code> token to mark the boundary.</li>
+              <li>Mask the suffix and train the dLLM to reconstruct only the masked continuation.</li>
+            </ul>
+            <p>
+              This teaches the dLLM to view the question plus partial answer as a prefix and to complete the masked part
+              in a way that matches the teacher distribution.
+            </p>
+          </div>
+        </div>
+        <div class="column is-6">
+          <h3 class="title is-4">Stage II — Prefix-Conditioned Accuracy Refinement</h3>
+          <div class="content has-text-justified">
+            <p>
+              Speculative decoding is especially sensitive to the first few tokens after the prefix, where verification
+              begins. Stage II focuses the dLLM's capacity on this region:
+            </p>
+            <ul>
+              <li>Mask only the last <em>R</em> tokens of the answer rather than the full suffix.</li>
+              <li>Apply exponentially decaying weights, giving higher emphasis to tokens right after the prefix.</li>
+              <li>Optimize a weighted objective that sharpens local alignment exactly where the verifier operates.</li>
+            </ul>
+            <p>
+              Together, these two stages yield a drafter that is both globally coherent and locally precise around the
+              verification boundary.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="content has-text-centered" style="margin-top: 2rem;">
+        <img src="static/images/pipeline.png" alt="Conceptual comparison between AR-based drafting and DEER's diffusion-based block drafting" style="width: 100%; max-width: 800px; border-radius: 12px;">
+          <p class="is-size-6 has-text-grey" style="margin-top: 0.5rem; font-style: italic;">
+            <strong>Figure 2:</strong> Overview of the DEER training and inference pipeline (Stage I & II alignment plus Stage III speculative decoding)
+          </p>
+      </div>
+
+      <div class="columns">
+        <div class="column is-full-width">
+          <h3 class="title is-4">Stage III — Blockwise Draft–Verify Inference</h3>
+          <div class="content has-text-justified">
+            <p>
+              At inference, given a prefix <em>x</em><sub>1:j</sub>, the dLLM proposes a block of <em>k</em> draft tokens
+              in parallel. The AR verifier then walks through the block position by position:
+            </p>
+            <ol>
+              <li>Compute the acceptance probability from the ratio between AR and draft distributions.</li>
+              <li>Stochastically accept the draft token or replace it with an AR sample.</li>
+              <li>Append the chosen token to the prefix and continue to the next position in the block.</li>
+            </ol>
+            <p>
+              Since all draft tokens are predicted from the same prefix, they do not depend on earlier draft decisions,
+              preventing the kind of cascading divergence that plagues AR drafters.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">📊 Experimental Highlights</h2>
+
+      <div class="columns is-variable is-6">
+        <div class="column">
+          <div class="highlight-card">
+            <h3 class="title is-4">Code Generation Benchmarks</h3>
+            <div class="content has-text-justified">
+              <p>
+                DEER is evaluated on multiple code benchmarks such as HumanEval, MBPP, CodeAlpaca (Python subset), and
+                LiveCodeBench with different Qwen backbones. The AR verifier reuses the original model weights, so
+                solution quality is preserved while decoding becomes faster.
+              </p>
+              <p>
+                For a Qwen3-30B-A3B backbone at zero temperature, DEER roughly doubles the average number of accepted
+                tokens per cycle compared to strong AR-based drafters, and translates this into substantial end-to-end
+                speedups.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="highlight-card">
+            <h3 class="title is-4">Acceptance Length & Speedup</h3>
+            <div class="content has-text-justified">
+              <ul>
+                <li><strong>Average accepted length:</strong> up to ≈5 tokens per speculative step on Qwen3-30B-A3B,
+                  notably higher than strong AR drafters.</li>
+                <li><strong>Maximum accepted length:</strong> up to 32 consecutive tokens per block, vs. 7–8 tokens for
+                  competitive AR-based methods.</li>
+                <li><strong>Speedup:</strong> on HumanEval, DEER reaches around <strong>5.54×</strong> acceleration with
+                  Qwen3-30B-A3B while maintaining lossless decoding.</li>
+              </ul>
+              <p>
+                These gains persist across model sizes, indicating that controlling error accumulation is key to
+                high-throughput speculative decoding for modern LLMs.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simple summary table -->
+      <div class="content has-text-centered" style="margin-top: 2rem;">
+        <div style="overflow-x: auto;">
+          <table class="table is-bordered is-striped is-hoverable" style="margin: 0 auto; font-size: 0.9rem;">
+            <thead>
+              <tr style="background-color: #f5f5f5;">
+                <th style="text-align: center;">Model</th>
+                <th style="text-align: center;">Benchmark</th>
+                <th style="text-align: center;">Baseline (AR drafter) Speedup</th>
+                <th style="text-align: center;">DEER Speedup</th>
+                <th style="text-align: center;">Max Accepted Tokens</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: center;">Qwen3-4B</td>
+                <td style="text-align: center;">Code (avg.)</td>
+                <td style="text-align: center;">≈2.3×</td>
+                <td style="text-align: center;"><strong>≈2.8–3.0×</strong></td>
+                <td style="text-align: center;">32</td>
+              </tr>
+              <tr>
+                <td style="text-align: center;">Qwen3-8B</td>
+                <td style="text-align: center;">Code (avg.)</td>
+                <td style="text-align: center;">≈2.4×</td>
+                <td style="text-align: center;"><strong>≈3.0×+</strong></td>
+                <td style="text-align: center;">32</td>
+              </tr>
+              <tr>
+                <td style="text-align: center;">Qwen3-14B</td>
+                <td style="text-align: center;">Code (avg.)</td>
+                <td style="text-align: center;">≈2.4×</td>
+                <td style="text-align: center;"><strong>≈3.1–3.7×</strong></td>
+                <td style="text-align: center;">32</td>
+              </tr>
+              <tr>
+                <td style="text-align: center;">Qwen3-30B-A3B</td>
+                <td style="text-align: center;">HumanEval</td>
+                <td style="text-align: center;">≈2.4×</td>
+                <td style="text-align: center;"><strong>≈5.5×</strong></td>
+                <td style="text-align: center;">32</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="content has-text-centered" style="margin-top: 2rem;">
+        <img src="static/images/accept_lenth.png" alt="result" style="width: 100%; max-width: 800px; border-radius: 12px;">
+          <p class="is-size-6 has-text-grey" style="margin-top: 0.5rem; font-style: italic;">
+            <strong>Figure 2:</strong> Accepted token length across different Qwen backbones
+          </p>
+      </div>
+    </div>
+      <!-- Figure placeholder: speedup & acceptance distribution -->
+
+    </div>
+  </section>
+
+  <!-- Algorithm (Pseudo-code) -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">🧠 DEER Inference Algorithm</h2>
+
+      <div class="columns is-centered">
+        <div class="column is-four-fifths">
+          <div class="code-block">
+            <div><span class="cm"># Blockwise speculative decoding with a dLLM drafter</span></div>
+            <div><span class="kw">def</span> <span class="fn">deer_decode</span>(ar_model, d_dllm, prefix, k, max_length):</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;x = list(prefix)</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">while</span> len(x) &lt; max_length:</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm"># 1) draft k tokens in parallel from the dLLM</span></div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;y_hat = d_dllm.block_sample(x, k)</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">for</span> i, token in <span class="kw">enumerate</span>(y_hat, start=1):</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ar_dist = ar_model.next_token_dist(x)</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;draft_dist = d_dllm.cond_dist(x)</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm"># 2) compute acceptance probability</span></div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;alpha = min(1.0, ar_dist[token] / (draft_dist[token] + 1e-9))</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;u = random.uniform(0.0, 1.0)</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> u &lt;= alpha:</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x.append(token)  <span class="cm"># accept draft</span></div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">else</span>:</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x.append(sample_from_residual(ar_dist, draft_dist))</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> x[-1] == <span class="cm">"&lt;EOS&gt;"</span>:</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> x</div>
+            <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> x</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content has-text-justified" style="margin-top: 1.5rem;">
+        <p>
+          The drafter's distribution is queried only once per block, while the AR model is evaluated for lightweight
+          token-wise verification. Under standard assumptions, this realizes exact decoding while significantly reducing
+          effective per-token latency.
+        </p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- BibTeX -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">📚 BibTeX</h2>
+      <div class="columns is-centered">
+        <div class="column is-four-fifths">
+          <div class="code-block">
+            <!-- 
+            <span class="cm">%% DEER: Draft with Diffusion, Verify with Autoregressive Models</span><br />
+            @inproceedings&#123;<br />
+            &nbsp;&nbsp;deer2025,<br />
+            &nbsp;&nbsp;title&nbsp;&nbsp;&nbsp;=&nbsp;&#123;Draft with Diffusion, Verify with Autoregressive Models&#125;,<br />
+            &nbsp;&nbsp;author&nbsp;&nbsp;=&nbsp;&#123;Anonymous Authors&#125;,<br />
+            &nbsp;&nbsp;booktitle =&nbsp;&#123;International Conference on Machine Learning (ICML)&#125;,<br />
+            &nbsp;&nbsp;year&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&#123;2025&#125;,<br />
+            &nbsp;&nbsp;note&nbsp;&nbsp;&nbsp;&nbsp;=&nbsp;&#123;Preliminary work, under review&#125;<br />
+            &#125;
+            -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</body>
+
+</html>
